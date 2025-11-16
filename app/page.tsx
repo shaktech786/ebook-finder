@@ -6,6 +6,7 @@ import BookGrid from '@/components/BookGrid';
 import KindleEmailModal from '@/components/KindleEmailModal';
 import DarkModeToggle from '@/components/DarkModeToggle';
 import { Book, SearchResult } from '@/lib/types';
+import { deduplicateAndMergeBooks, fetchWithTimeout } from '@/lib/search-optimizer';
 
 export default function Home() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -39,51 +40,54 @@ export default function Home() {
     setBooks([]);
 
     try {
-      // Try multiple sources in parallel, with fallback
+      // Try multiple sources in parallel, with fallback and timeouts
       const sources = [
-        { name: 'openlibrary', url: `/api/search/openlibrary?q=${encodeURIComponent(query)}` },
-        { name: 'gutenberg', url: `/api/search/gutenberg?q=${encodeURIComponent(query)}` },
-        { name: 'libgen', url: `/api/search/libgen?q=${encodeURIComponent(query)}` },
+        { name: 'openlibrary', url: `/api/search/openlibrary?q=${encodeURIComponent(query)}`, timeout: 12000 },
+        { name: 'gutenberg', url: `/api/search/gutenberg?q=${encodeURIComponent(query)}`, timeout: 10000 },
+        { name: 'libgen', url: `/api/search/libgen?q=${encodeURIComponent(query)}`, timeout: 15000 },
       ];
 
-      // Search all sources in parallel
+      // Search all sources in parallel with individual timeouts
       const results = await Promise.allSettled(
         sources.map(async (source) => {
-          const response = await fetch(source.url);
-          const data: SearchResult = await response.json();
+          return fetchWithTimeout(
+            fetch(source.url).then(async (response) => {
+              const data: SearchResult = await response.json();
 
-          if (!response.ok) {
-            throw new Error(data.error || `${source.name} search failed`);
-          }
+              if (!response.ok) {
+                throw new Error(data.error || `${source.name} search failed`);
+              }
 
-          return data.books;
+              return data.books;
+            }),
+            source.timeout
+          );
         })
       );
 
       // Combine results from successful searches
       const allBooks: Book[] = [];
+      let successCount = 0;
       results.forEach((result, index) => {
         if (result.status === 'fulfilled') {
           allBooks.push(...result.value);
+          successCount++;
         } else {
           console.warn(`${sources[index].name} search failed:`, result.reason);
         }
       });
 
-      // Remove duplicates based on title + author
-      const uniqueBooks = allBooks.reduce((acc, book) => {
-        const key = `${book.title}-${book.author}`.toLowerCase();
-        if (!acc.has(key)) {
-          acc.set(key, book);
+      // Deduplicate, merge metadata, and rank by relevance
+      const optimizedBooks = deduplicateAndMergeBooks(allBooks, query);
+
+      setBooks(optimizedBooks);
+
+      if (optimizedBooks.length === 0) {
+        if (successCount === 0) {
+          setError('All search sources failed. Please try again.');
+        } else {
+          setError('No books found. Try a different search term.');
         }
-        return acc;
-      }, new Map<string, Book>());
-
-      const finalBooks = Array.from(uniqueBooks.values());
-      setBooks(finalBooks);
-
-      if (finalBooks.length === 0) {
-        setError('No books found. Try a different search term.');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to search for books');
