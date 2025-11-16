@@ -79,6 +79,7 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
             alt={book.title}
             fill
             className="object-cover"
+            unoptimized
             onError={(e) => {
               // Fallback to placeholder if cover fails to load
               e.currentTarget.style.display = 'none';
