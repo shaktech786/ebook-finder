@@ -9,7 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@types/nodemailer": "^7.0.3",
+    "axios": "^1.13.2",
+    "cheerio": "^1.1.2",
     "next": "16.0.3",
+    "nodemailer": "^7.0.10",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

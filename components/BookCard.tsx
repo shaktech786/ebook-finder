@@ -1,0 +1,174 @@
+'use client';
+
+import { useState } from 'react';
+import { Book } from '@/lib/types';
+import { PaperAirplaneIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
+import Image from 'next/image';
+
+interface BookCardProps {
+  book: Book;
+  kindleEmail: string | null;
+  onSetKindleEmail: () => void;
+}
+
+export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCardProps) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSendToKindle = async () => {
+    if (!kindleEmail) {
+      onSetKindleEmail();
+      return;
+    }
+
+    setSending(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/send-to-kindle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookTitle: book.title,
+          downloadUrl: book.downloadUrl,
+          kindleEmail,
+          fileFormat: book.fileFormat,
+          source: book.source,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send to Kindle');
+      }
+
+      setSent(true);
+      setTimeout(() => setSent(false), 5000); // Reset after 5 seconds
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send to Kindle');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Format badge color based on file format
+  const getFormatBadgeColor = () => {
+    switch (book.fileFormat) {
+      case 'epub':
+        return 'bg-green-500 text-white';
+      case 'mobi':
+        return 'bg-yellow-500 text-black';
+      case 'pdf':
+        return 'bg-orange-500 text-white';
+      default:
+        return 'bg-gray-500 text-white';
+    }
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow border-2 border-gray-200 dark:border-gray-700">
+      {/* Book Cover */}
+      <div className="relative w-full aspect-[2/3] mb-3 sm:mb-4 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+        {book.coverUrl ? (
+          <Image
+            src={book.coverUrl}
+            alt={book.title}
+            fill
+            className="object-cover"
+            onError={(e) => {
+              // Fallback to placeholder if cover fails to load
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
+            <svg className="w-20 h-20" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+            </svg>
+          </div>
+        )}
+      </div>
+
+      {/* Book Details */}
+      <div className="space-y-2 sm:space-y-3">
+        <h3 className="font-bold text-lg sm:text-xl md:text-2xl leading-tight line-clamp-2 text-gray-900 dark:text-gray-100" title={book.title}>
+          {book.title}
+        </h3>
+
+        <p className="text-base sm:text-lg md:text-xl text-gray-700 dark:text-gray-300">{book.author}</p>
+
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {book.year && (
+            <span className="text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-400">{book.year}</span>
+          )}
+
+          <span className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-bold text-sm sm:text-base md:text-lg uppercase ${getFormatBadgeColor()}`}>
+            {book.fileFormat}
+          </span>
+
+          <span className="text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-400">{book.fileSize}</span>
+        </div>
+
+        {book.pages && (
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-400">{book.pages} pages</p>
+        )}
+      </div>
+
+      {/* Send to Kindle Button */}
+      <div className="mt-4 sm:mt-6">
+        {sent ? (
+          <button
+            disabled
+            className="w-full bg-green-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg md:text-xl flex items-center justify-center gap-2"
+          >
+            <CheckCircleIcon className="h-6 sm:h-7 w-6 sm:w-7" />
+            Sent to Kindle!
+          </button>
+        ) : (
+          <button
+            onClick={handleSendToKindle}
+            disabled={sending}
+            className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-400 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg md:text-xl transition-colors flex items-center justify-center gap-2 shadow-md touch-manipulation"
+          >
+            {sending ? (
+              <>
+                <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Sending...
+              </>
+            ) : (
+              <>
+                <PaperAirplaneIcon className="h-6 w-6" />
+                Send to Kindle
+              </>
+            )}
+          </button>
+        )}
+
+        {error && (
+          <p className="mt-3 text-red-600 dark:text-red-400 text-lg font-semibold text-center">
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
