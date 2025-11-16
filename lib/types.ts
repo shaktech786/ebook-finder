@@ -29,6 +29,7 @@ export interface SearchResult {
   page: number;
   query: SearchQuery;
   source: string;
+  error?: string;
 }
 
 export interface CacheEntry<T> {
