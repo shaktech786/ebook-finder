@@ -1,21 +1,34 @@
 'use client';
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
-import { MagnifyingGlassIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { MagnifyingGlassIcon, ClockIcon, XMarkIcon, BookOpenIcon } from '@heroicons/react/24/solid';
+import Image from 'next/image';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
   isLoading?: boolean;
 }
 
+interface BookSuggestion {
+  title: string;
+  author: string;
+  year?: string;
+  coverUrl?: string;
+  key: string;
+}
+
 const MAX_HISTORY_ITEMS = 10;
+const SUGGESTION_LIMIT = 8;
 
 export default function SearchBar({ onSearch, isLoading = false }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredHistory, setFilteredHistory] = useState<string[]>([]);
+  const [bookSuggestions, setBookSuggestions] = useState<BookSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load search history from localStorage
   useEffect(() => {
@@ -51,6 +64,58 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
       setFilteredHistory(searchHistory);
     }
   }, [query, searchHistory]);
+
+  // Fetch book suggestions with debouncing
+  useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Don't fetch if query is too short
+    if (query.trim().length < 2) {
+      setBookSuggestions([]);
+      return;
+    }
+
+    // Set debounce timer
+    debounceTimerRef.current = setTimeout(async () => {
+      setLoadingSuggestions(true);
+      try {
+        const response = await fetch(
+          `https://openlibrary.org/search.json?q=${encodeURIComponent(query.trim())}&limit=${SUGGESTION_LIMIT}&fields=key,title,author_name,first_publish_year,cover_i`
+        );
+
+        if (!response.ok) throw new Error('Failed to fetch suggestions');
+
+        const data = await response.json();
+
+        const suggestions: BookSuggestion[] = (data.docs || []).map((doc: any) => ({
+          title: doc.title || 'Unknown Title',
+          author: doc.author_name?.[0] || 'Unknown Author',
+          year: doc.first_publish_year?.toString(),
+          coverUrl: doc.cover_i
+            ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-S.jpg`
+            : undefined,
+          key: doc.key || '',
+        }));
+
+        setBookSuggestions(suggestions);
+      } catch (error) {
+        console.error('Error fetching book suggestions:', error);
+        setBookSuggestions([]);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 300); // 300ms debounce
+
+    // Cleanup
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [query]);
 
   const saveToHistory = (searchQuery: string) => {
     const trimmed = searchQuery.trim();
@@ -88,10 +153,12 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
     }
   };
 
-  const selectSuggestion = (suggestion: string) => {
-    setQuery(suggestion);
+  const selectSuggestion = (suggestion: string | BookSuggestion) => {
+    const searchQuery = typeof suggestion === 'string' ? suggestion : suggestion.title;
+    setQuery(searchQuery);
     setShowSuggestions(false);
-    onSearch(suggestion);
+    saveToHistory(searchQuery);
+    onSearch(searchQuery);
   };
 
   return (
@@ -140,45 +207,112 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
           )}
         </button>
 
-        {/* Search History Dropdown */}
-        {showSuggestions && filteredHistory.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border-4 border-gray-300 dark:border-gray-600 rounded-2xl shadow-xl z-50 max-h-96 overflow-y-auto">
-            <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b-2 border-gray-200 dark:border-gray-700">
-              <span className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-300">
-                Recent Searches
-              </span>
-              <button
-                type="button"
-                onClick={clearHistory}
-                className="text-xs sm:text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-semibold transition-colors"
-              >
-                Clear All
-              </button>
-            </div>
-            <ul>
-              {filteredHistory.map((item, index) => (
-                <li
-                  key={index}
-                  onClick={() => selectSuggestion(item)}
-                  className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors group border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <ClockIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                    <span className="text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate">
-                      {item}
-                    </span>
-                  </div>
+        {/* Suggestions Dropdown */}
+        {showSuggestions && (filteredHistory.length > 0 || bookSuggestions.length > 0 || loadingSuggestions) && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border-4 border-gray-300 dark:border-gray-600 rounded-2xl shadow-xl z-50 max-h-[32rem] overflow-y-auto">
+            {/* Recent Searches Section */}
+            {filteredHistory.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                  <span className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-300">
+                    Recent Searches
+                  </span>
                   <button
                     type="button"
-                    onClick={(e) => removeHistoryItem(item, e)}
-                    className="ml-2 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg flex-shrink-0"
-                    aria-label="Remove from history"
+                    onClick={clearHistory}
+                    className="text-xs sm:text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-semibold transition-colors"
                   >
-                    <XMarkIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                    Clear All
                   </button>
-                </li>
-              ))}
-            </ul>
+                </div>
+                <ul>
+                  {filteredHistory.map((item, index) => (
+                    <li
+                      key={`history-${index}`}
+                      onClick={() => selectSuggestion(item)}
+                      className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors group border-b border-gray-100 dark:border-gray-700"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <ClockIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                        <span className="text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate">
+                          {item}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => removeHistoryItem(item, e)}
+                        className="ml-2 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg flex-shrink-0"
+                        aria-label="Remove from history"
+                      >
+                        <XMarkIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Book Suggestions Section */}
+            {query.trim().length >= 2 && (
+              <div>
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                  <span className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <BookOpenIcon className="h-5 w-5" />
+                    Book Suggestions
+                  </span>
+                  {loadingSuggestions && (
+                    <svg className="animate-spin h-4 w-4 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  )}
+                </div>
+                <ul>
+                  {bookSuggestions.length > 0 ? (
+                    bookSuggestions.map((book, index) => (
+                      <li
+                        key={`suggestion-${index}`}
+                        onClick={() => selectSuggestion(book)}
+                        className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                      >
+                        {/* Book Cover */}
+                        <div className="w-12 h-16 sm:w-14 sm:h-20 bg-gray-200 dark:bg-gray-600 rounded flex-shrink-0 overflow-hidden">
+                          {book.coverUrl ? (
+                            <Image
+                              src={book.coverUrl}
+                              alt={book.title}
+                              width={56}
+                              height={80}
+                              className="w-full h-full object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
+                              <BookOpenIcon className="h-6 w-6" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Book Info */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+                            {book.title}
+                          </h4>
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
+                            {book.author}
+                            {book.year && ` • ${book.year}`}
+                          </p>
+                        </div>
+                      </li>
+                    ))
+                  ) : !loadingSuggestions ? (
+                    <li className="px-4 sm:px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                      No suggestions found
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>

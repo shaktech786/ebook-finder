@@ -61,14 +61,36 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
     setError(null);
 
     try {
-      // Create a temporary link and trigger download
+      // Use API route to proxy download with proper headers
+      const response = await fetch('/api/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          downloadUrl: book.downloadUrl,
+          fileName: `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`,
+          fileFormat: book.fileFormat,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to download');
+      }
+
+      // Get the file blob
+      const blob = await response.blob();
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = book.downloadUrl;
-      link.target = '_blank';
+      link.href = url;
       link.download = `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to download');
     } finally {
