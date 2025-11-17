@@ -18,14 +18,15 @@ export async function POST(request: NextRequest) {
 
     // Get actual download link for Library Genesis
     let actualDownloadUrl = downloadUrl;
-    if (source === 'libgen' && !downloadUrl.includes('library.lol') && !downloadUrl.includes('cloudflare')) {
+    if (source === 'libgen' && !downloadUrl.includes('library.lol') && !downloadUrl.includes('cloudflare') && !downloadUrl.includes('ipfs.io')) {
       try {
-        console.log('Resolving LibGen download link...');
+        console.log('Resolving LibGen download link from:', downloadUrl);
         actualDownloadUrl = await getLibgenDownloadLink(downloadUrl);
         console.log('Resolved to:', actualDownloadUrl);
       } catch (error) {
-        console.error('Failed to get direct download link:', error);
-        throw new Error('Could not resolve download link. Please try again.');
+        console.error('Failed to resolve LibGen link, trying original URL:', error);
+        // Try the original URL as fallback
+        actualDownloadUrl = downloadUrl;
       }
     }
 

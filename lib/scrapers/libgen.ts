@@ -164,23 +164,51 @@ function normalizeFormat(format: string): 'epub' | 'mobi' | 'pdf' | 'other' {
  */
 export async function getLibgenDownloadLink(bookUrl: string): Promise<string> {
   try {
+    console.log('Fetching LibGen page:', bookUrl);
     const response = await axios.get(bookUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
-      timeout: 10000,
+      timeout: 15000,
+      maxRedirects: 5,
     });
 
     const $ = cheerio.load(response.data);
 
-    // Look for GET link (actual download)
-    const downloadLink = $('a[href*="library.lol/main"], a[href*="cloudflare"], a:contains("GET")').first().attr('href');
+    // Try multiple selectors in order of preference
+    const selectors = [
+      'a[href*="library.lol/main"]',
+      'a[href*="cloudflare"]',
+      'a[href*="ipfs.io"]',
+      'a:contains("GET")',
+      'a:contains("Cloudflare")',
+      'a[href*="/get.php"]',
+      'a[href*="/download"]',
+      'a[title*="download"]',
+      '#download a',
+      'table a[href^="http"]',
+    ];
 
-    if (downloadLink) {
-      return downloadLink;
+    for (const selector of selectors) {
+      const link = $(selector).first().attr('href');
+      if (link && link.startsWith('http')) {
+        console.log('Found download link:', link);
+        return link;
+      }
     }
 
-    throw new Error('Download link not found');
+    // Last resort: look for any external http link
+    const allLinks = $('a[href^="http"]').toArray();
+    for (const link of allLinks) {
+      const href = $(link).attr('href');
+      if (href && !href.includes('libgen.') && !href.includes('doi.org')) {
+        console.log('Found fallback link:', href);
+        return href;
+      }
+    }
+
+    console.error('No download link found in page');
+    throw new Error('Download link not found on LibGen page');
   } catch (error) {
     console.error('Failed to get download link:', error);
     throw error;
