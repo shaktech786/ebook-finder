@@ -75,12 +75,15 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
     // Don't fetch if query is too short
     if (query.trim().length < 2) {
       setBookSuggestions([]);
+      setLoadingSuggestions(false);
       return;
     }
 
+    // Set loading state immediately
+    setLoadingSuggestions(true);
+
     // Set debounce timer
     debounceTimerRef.current = setTimeout(async () => {
-      setLoadingSuggestions(true);
       try {
         const response = await fetch(
           `https://openlibrary.org/search.json?q=${encodeURIComponent(query.trim())}&limit=${SUGGESTION_LIMIT}&fields=key,title,author_name,first_publish_year,cover_i`
@@ -208,7 +211,7 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
         </button>
 
         {/* Suggestions Dropdown */}
-        {showSuggestions && (filteredHistory.length > 0 || bookSuggestions.length > 0 || loadingSuggestions) && (
+        {showSuggestions && (filteredHistory.length > 0 || bookSuggestions.length > 0 || loadingSuggestions || query.trim().length === 0) && (
           <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border-4 border-gray-300 dark:border-gray-600 rounded-2xl shadow-xl z-50 max-h-[32rem] overflow-y-auto">
             {/* Recent Searches Section */}
             {filteredHistory.length > 0 && (
@@ -249,6 +252,16 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* Empty State - No History */}
+            {filteredHistory.length === 0 && query.trim().length === 0 && (
+              <div className="px-4 sm:px-6 py-6 text-center">
+                <MagnifyingGlassIcon className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
+                  Start typing to search for books
+                </p>
               </div>
             )}
 
@@ -311,6 +324,15 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
                     </li>
                   ) : null}
                 </ul>
+              </div>
+            )}
+
+            {/* Empty State - Query Too Short */}
+            {query.trim().length === 1 && filteredHistory.length === 0 && (
+              <div className="px-4 sm:px-6 py-6 text-center">
+                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
+                  Type at least 2 characters for suggestions
+                </p>
               </div>
             )}
           </div>
