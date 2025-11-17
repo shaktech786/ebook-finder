@@ -71,6 +71,7 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
           downloadUrl: book.downloadUrl,
           fileName: `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`,
           fileFormat: book.fileFormat,
+          source: book.source,
         }),
       });
 

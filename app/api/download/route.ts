@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import axios from 'axios';
+import { getLibgenDownloadLink } from '@/lib/scrapers/libgen';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
-    const { downloadUrl, fileName, fileFormat } = await request.json();
+    const { downloadUrl, fileName, fileFormat, source } = await request.json();
 
     if (!downloadUrl) {
       return NextResponse.json(
@@ -11,26 +16,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch the file from the remote URL
-    const response = await fetch(downloadUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.statusText}`);
+    // Get actual download link for Library Genesis
+    let actualDownloadUrl = downloadUrl;
+    if (source === 'libgen' && !downloadUrl.includes('library.lol') && !downloadUrl.includes('cloudflare')) {
+      try {
+        console.log('Resolving LibGen download link...');
+        actualDownloadUrl = await getLibgenDownloadLink(downloadUrl);
+        console.log('Resolved to:', actualDownloadUrl);
+      } catch (error) {
+        console.error('Failed to get direct download link:', error);
+        throw new Error('Could not resolve download link. Please try again.');
+      }
     }
 
-    // Get the file data
-    const fileData = await response.arrayBuffer();
+    // Fetch the file from the remote URL
+    console.log('Downloading file from:', actualDownloadUrl);
+    const response = await axios.get(actualDownloadUrl, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      },
+      timeout: 60000, // 60 second timeout
+      maxContentLength: 50 * 1024 * 1024, // 50MB max
+    });
+
+    const fileData = Buffer.from(response.data);
 
     // Determine content type
-    const contentType = response.headers.get('content-type') ||
-      getContentType(fileFormat);
+    const contentType = response.headers['content-type'] || getContentType(fileFormat);
 
     // Generate safe filename
     const safeFileName = fileName || `download.${fileFormat || 'bin'}`;
+
+    console.log(`Download successful: ${safeFileName} (${fileData.byteLength} bytes)`);
 
     // Return the file with download headers
     return new NextResponse(fileData, {
@@ -43,8 +61,22 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Download error:', error);
+
+    let errorMessage = 'Failed to download file';
+    if (axios.isAxiosError(error)) {
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Download timeout - file may be too large';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'File not found at download URL';
+      } else {
+        errorMessage = 'Failed to download file from server';
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to download file' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
