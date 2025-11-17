@@ -196,7 +196,6 @@ export async function getLibgenDownloadLink(bookUrl: string): Promise<string> {
       'a[href*="/download"]',
       'a[title*="download"]',
       '#download a',
-      'table a[href^="http"]',
     ];
 
     for (const selector of selectors) {
@@ -207,18 +206,21 @@ export async function getLibgenDownloadLink(bookUrl: string): Promise<string> {
       }
     }
 
-    // Last resort: look for any external http link
+    // Last resort: look for known good domains only
     const allLinks = $('a[href^="http"]').toArray();
+    const goodDomains = ['library.lol', 'cloudflare', 'ipfs.io', 'gateway'];
+
     for (const link of allLinks) {
       const href = $(link).attr('href');
-      if (href && !href.includes('libgen.') && !href.includes('doi.org')) {
+      if (href && goodDomains.some(domain => href.includes(domain))) {
         console.log('Found fallback link:', href);
         return href;
       }
     }
 
-    console.error('No download link found in page');
-    throw new Error('Download link not found on LibGen page');
+    console.error('No valid download link found in page');
+    console.log('Available links:', $('a[href^="http"]').map((_, el) => $(el).attr('href')).get());
+    throw new Error('No download link found on LibGen page');
   } catch (error) {
     console.error('Failed to get download link:', error);
     throw error;
