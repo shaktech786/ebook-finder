@@ -18,7 +18,15 @@ export async function POST(request: NextRequest) {
 
     // Get actual download link for Library Genesis
     let actualDownloadUrl = downloadUrl;
-    if (source === 'libgen' && !downloadUrl.includes('library.lol') && !downloadUrl.includes('cloudflare') && !downloadUrl.includes('ipfs.io')) {
+
+    // Only scrape if not already a direct download URL
+    const isDirectDownload =
+      downloadUrl.includes('library.lol/main/') ||
+      downloadUrl.includes('cloudflare') ||
+      downloadUrl.includes('ipfs.io') ||
+      downloadUrl.includes('/get.php');
+
+    if (source === 'libgen' && !isDirectDownload) {
       try {
         console.log('Resolving LibGen download link from:', downloadUrl);
         actualDownloadUrl = await getLibgenDownloadLink(downloadUrl);
@@ -28,6 +36,8 @@ export async function POST(request: NextRequest) {
         // Try the original URL as fallback
         actualDownloadUrl = downloadUrl;
       }
+    } else if (source === 'libgen') {
+      console.log('Using direct download URL:', downloadUrl);
     }
 
     // Fetch the file from the remote URL

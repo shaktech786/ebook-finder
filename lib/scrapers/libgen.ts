@@ -112,14 +112,23 @@ function parseLibgenResults(html: string, mirror: string): Book[] {
       const fileSize = $(cells[7]).text().trim();
       const fileFormat = $(cells[8]).text().trim().toLowerCase();
 
-      // Get download link
-      const downloadLinks = titleCell.find('a[href*="library.lol"], a[href*="libgen"], a[href*="download"]');
-      const downloadUrl = downloadLinks.first().attr('href') || '';
-
-      // Get MD5 for cover image
+      // Get MD5 for download and cover
       const md5Link = $(cells[9]).find('a').attr('href');
       const md5Match = md5Link?.match(/md5=([a-f0-9]+)/i);
-      const md5 = md5Match ? md5Match[1] : '';
+      const md5 = md5Match ? md5Match[1].toLowerCase() : '';
+
+      // Construct reliable download URL using MD5
+      // Priority: library.lol (most reliable) > cloudflare > original link
+      let downloadUrl = '';
+      if (md5) {
+        // Use library.lol with MD5 - most reliable direct download
+        downloadUrl = `https://library.lol/main/${md5}`;
+      } else {
+        // Fallback: try to extract link from page
+        const downloadLinks = titleCell.find('a[href*="library.lol"], a[href*="libgen"], a[href*="download"]');
+        const link = downloadLinks.first().attr('href') || '';
+        downloadUrl = link.startsWith('http') ? link : `${mirror}${link}`;
+      }
 
       const book: Book = {
         id: `libgen-${id}-${md5}`,
@@ -133,8 +142,9 @@ function parseLibgenResults(html: string, mirror: string): Book[] {
         fileSize,
         fileSizeBytes: parseSizeToBytes(fileSize),
         coverUrl: md5 ? `https://libgen.is/covers/${md5.substring(0, 3)}/${md5}${fileFormat ? '.' + fileFormat : '.jpg'}` : undefined,
-        downloadUrl: downloadUrl.startsWith('http') ? downloadUrl : `${mirror}${downloadUrl}`,
+        downloadUrl,
         source: 'libgen',
+        md5, // Store MD5 for later use
       };
 
       books.push(book);

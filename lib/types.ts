@@ -14,6 +14,7 @@ export interface Book {
   downloadUrl: string;
   source: 'libgen' | 'gutenberg' | 'openlibrary' | 'archive' | 'standardebooks';
   description?: string;
+  md5?: string; // LibGen MD5 hash for direct downloads
 }
 
 export interface SearchQuery {
