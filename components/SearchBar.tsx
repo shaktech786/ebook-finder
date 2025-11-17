@@ -28,6 +28,7 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
   const [bookSuggestions, setBookSuggestions] = useState<BookSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load search history from localStorage
@@ -39,6 +40,17 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
       } catch (e) {
         console.error('Failed to load search history:', e);
       }
+    }
+  }, []);
+
+  // Handle autofocus - show suggestions after a brief delay
+  useEffect(() => {
+    if (inputRef.current === document.activeElement) {
+      // Input is focused (via autofocus), show suggestions after hydration
+      const timer = setTimeout(() => {
+        setShowSuggestions(true);
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -168,6 +180,7 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
     <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto px-4 sm:px-0">
       <div className="relative" ref={wrapperRef}>
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
