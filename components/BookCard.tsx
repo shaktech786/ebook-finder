@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Book } from '@/lib/types';
-import { PaperAirplaneIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
+import { PaperAirplaneIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/solid';
 import Image from 'next/image';
 
 interface BookCardProps {
@@ -15,6 +15,7 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const handleSendToKindle = async () => {
     if (!kindleEmail) {
@@ -52,6 +53,26 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
       setError(err instanceof Error ? err.message : 'Failed to send to Kindle');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setError(null);
+
+    try {
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = book.downloadUrl;
+      link.target = '_blank';
+      link.download = `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to download');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -119,8 +140,9 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
         )}
       </div>
 
-      {/* Send to Kindle Button */}
-      <div className="mt-4 sm:mt-6">
+      {/* Action Buttons */}
+      <div className="mt-4 sm:mt-6 space-y-3">
+        {/* Send to Kindle Button */}
         {sent ? (
           <button
             disabled
@@ -132,7 +154,7 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
         ) : (
           <button
             onClick={handleSendToKindle}
-            disabled={sending}
+            disabled={sending || downloading}
             className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-400 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg md:text-xl transition-colors flex items-center justify-center gap-2 shadow-md touch-manipulation"
           >
             {sending ? (
@@ -163,6 +185,40 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
             )}
           </button>
         )}
+
+        {/* Download Button */}
+        <button
+          onClick={handleDownload}
+          disabled={downloading || sending}
+          className="w-full bg-gray-600 hover:bg-gray-700 active:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:active:bg-gray-500 disabled:bg-gray-400 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg md:text-xl transition-colors flex items-center justify-center gap-2 shadow-md touch-manipulation"
+        >
+          {downloading ? (
+            <>
+              <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Downloading...
+            </>
+          ) : (
+            <>
+              <ArrowDownTrayIcon className="h-6 w-6" />
+              Download
+            </>
+          )}
+        </button>
 
         {error && (
           <p className="mt-3 text-red-600 dark:text-red-400 text-lg font-semibold text-center">
