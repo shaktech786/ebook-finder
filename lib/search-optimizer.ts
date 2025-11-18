@@ -69,6 +69,34 @@ function levenshteinDistance(str1: string, str2: string): number {
 }
 
 /**
+ * Detects if a title is likely in English
+ * Checks for common non-English characters and patterns
+ */
+function isLikelyEnglishTitle(title: string): boolean {
+  const normalized = title.toLowerCase();
+
+  // Common non-English characters
+  const nonEnglishChars = /[àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿœß]/i;
+  if (nonEnglishChars.test(title)) {
+    return false;
+  }
+
+  // Common Portuguese/Spanish patterns
+  const portugueseSpanish = /(^o\s|^el\s|^la\s|^los\s|^las\s)/i;
+  if (portugueseSpanish.test(normalized)) {
+    return false;
+  }
+
+  // Common non-English words in titles
+  const foreignWords = /\b(alquimista|der|die|das|le|la|les|und|und|et)\b/i;
+  if (foreignWords.test(normalized)) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Calculate relevance score for a book based on search query
  */
 export function calculateRelevanceScore(book: Book, query: string): number {
@@ -77,6 +105,13 @@ export function calculateRelevanceScore(book: Book, query: string): number {
   const normalizedAuthor = book.author.toLowerCase();
 
   let score = 0;
+
+  // English title bonus - heavily prioritize English titles
+  if (isLikelyEnglishTitle(book.title)) {
+    score += 50; // Major bonus for English titles
+  } else {
+    score -= 100; // Heavy penalty for non-English titles
+  }
 
   // Source priority bonus - LibGen is best for popular/modern books
   if (book.source === 'libgen') {
