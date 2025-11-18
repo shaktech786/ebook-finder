@@ -24,17 +24,6 @@ export async function POST(request: NextRequest) {
     // Handle LibGen downloads with smart scraping
     actualDownloadUrl = downloadUrl;
 
-    // For trusted sources (Archive.org, Open Library), redirect directly to avoid file corruption
-    const trustedSources = ['archive', 'openlibrary', 'gutenberg', 'standardebooks'];
-    if (trustedSources.includes(source) && actualDownloadUrl.startsWith('http')) {
-      console.log(`[Download] Redirecting to trusted source: ${source}`);
-      return NextResponse.json({
-        redirect: true,
-        downloadUrl: actualDownloadUrl,
-        fileName: fileName,
-      });
-    }
-
     if (source === 'libgen') {
       try {
         console.log('LibGen download - using serverless HTTP scraping...');
@@ -47,6 +36,14 @@ export async function POST(request: NextRequest) {
         if (!actualDownloadUrl || actualDownloadUrl === downloadUrl) {
           throw new Error('Could not resolve LibGen download link');
         }
+
+        // Redirect LibGen downloads directly to avoid file corruption
+        console.log('[Download] Redirecting to LibGen direct link');
+        return NextResponse.json({
+          redirect: true,
+          downloadUrl: actualDownloadUrl,
+          fileName: fileName,
+        });
       } catch (error) {
         console.error('LibGen serverless scraping failed:', error);
 
@@ -58,6 +55,15 @@ export async function POST(request: NextRequest) {
             maxWaitTime: 45000
           });
           console.log('Playwright fallback succeeded:', actualDownloadUrl);
+
+          // Redirect Playwright result too
+          if (actualDownloadUrl.startsWith('http')) {
+            return NextResponse.json({
+              redirect: true,
+              downloadUrl: actualDownloadUrl,
+              fileName: fileName,
+            });
+          }
         } catch (playwrightError) {
           console.error('Playwright fallback also failed:', playwrightError);
 
@@ -73,6 +79,17 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+    }
+
+    // For trusted sources (Archive.org, Open Library), redirect directly to avoid file corruption
+    const trustedSources = ['archive', 'openlibrary', 'gutenberg', 'standardebooks'];
+    if (trustedSources.includes(source) && actualDownloadUrl.startsWith('http')) {
+      console.log(`[Download] Redirecting to trusted source: ${source}`);
+      return NextResponse.json({
+        redirect: true,
+        downloadUrl: actualDownloadUrl,
+        fileName: fileName,
+      });
     }
 
     // Check if we have base64-encoded data from Playwright
