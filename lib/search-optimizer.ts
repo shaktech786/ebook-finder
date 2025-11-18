@@ -144,6 +144,8 @@ export function deduplicateAndMergeBooks(books: Book[], query: string): Book[] {
       // Merge metadata from both sources, preferring more complete data
       const merged: Book = {
         ...existing,
+        // Use the deduplication key as unique ID to prevent React key conflicts
+        id: `merged-${key.replace(/\s+/g, '-')}`,
         // Prefer longer descriptions
         description: (book.description?.length || 0) > (existing.description?.length || 0)
           ? book.description
