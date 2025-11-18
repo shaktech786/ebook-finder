@@ -31,6 +31,8 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
       console.log('[Send to Kindle] Starting metadata search for:', book.title);
       let downloadUrl = book.downloadUrl;
       let bookTitle = book.title;
+      let fileFormat = book.fileFormat;
+      let source = book.source;
 
       try {
         const metadataResponse = await fetch('/api/find-best-download', {
@@ -47,6 +49,8 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
             console.log('[Send to Kindle] Found better match using metadata search:', metadataData.metadata);
             downloadUrl = metadataData.book.downloadUrl;
             bookTitle = metadataData.book.title;
+            fileFormat = metadataData.book.fileFormat;
+            source = metadataData.book.source; // Use source from metadata search for correct automation
           }
         }
       } catch (metadataError) {
@@ -64,8 +68,8 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
           bookTitle,
           downloadUrl,
           kindleEmail,
-          fileFormat: book.fileFormat,
-          source: book.source,
+          fileFormat,
+          source, // Use correct source to trigger LibGen automation
         }),
       });
 
@@ -93,6 +97,8 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
       console.log('[Download] Starting metadata search for:', book.title);
       let downloadUrl = book.downloadUrl;
       let fileName = `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`;
+      let fileFormat = book.fileFormat;
+      let source = book.source;
 
       try {
         const metadataResponse = await fetch('/api/find-best-download', {
@@ -109,6 +115,8 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
             console.log('[Download] Found better match using metadata search:', metadataData.metadata);
             downloadUrl = metadataData.book.downloadUrl;
             fileName = `${metadataData.book.title.replace(/[^a-z0-9]/gi, '_')}.${metadataData.book.fileFormat}`;
+            fileFormat = metadataData.book.fileFormat;
+            source = metadataData.book.source; // Use source from metadata search for correct automation
           }
         }
       } catch (metadataError) {
@@ -125,8 +133,8 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
         body: JSON.stringify({
           downloadUrl,
           fileName,
-          fileFormat: book.fileFormat,
-          source: book.source,
+          fileFormat,
+          source, // Use correct source to trigger LibGen automation
         }),
       });
 

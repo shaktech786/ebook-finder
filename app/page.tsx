@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import SearchBar from '@/components/SearchBar';
 import BookGrid from '@/components/BookGrid';
 import KindleEmailModal from '@/components/KindleEmailModal';
+import FileUploadModal from '@/components/FileUploadModal';
 import DarkModeToggle from '@/components/DarkModeToggle';
 import { Book, SearchResult } from '@/lib/types';
 import { deduplicateAndMergeBooks, fetchWithTimeout } from '@/lib/search-optimizer';
@@ -14,6 +15,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [kindleEmail, setKindleEmail] = useState<string | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [currentQuery, setCurrentQuery] = useState<string>('');
 
@@ -110,7 +112,7 @@ export default function Home() {
                 Find and send free ebooks to your Kindle
               </p>
             </div>
-            <div className="w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               {kindleEmail ? (
                 <button
                   onClick={() => setShowEmailModal(true)}
@@ -127,6 +129,15 @@ export default function Home() {
                   Set Kindle Email
                 </button>
               )}
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-6 py-3 rounded-xl text-base sm:text-lg font-bold transition-colors shadow-md flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Upload File
+              </button>
             </div>
           </div>
         </div>
@@ -228,6 +239,14 @@ export default function Home() {
         onClose={() => setShowEmailModal(false)}
         onSave={handleSaveKindleEmail}
         currentEmail={kindleEmail}
+      />
+
+      {/* File Upload Modal */}
+      <FileUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        kindleEmail={kindleEmail}
+        onSetKindleEmail={() => setShowEmailModal(true)}
       />
 
       {/* Dark Mode Toggle */}

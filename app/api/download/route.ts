@@ -36,28 +36,15 @@ export async function POST(request: NextRequest) {
 
     if (source === 'libgen') {
       try {
-        console.log('LibGen download - attempting smart scraping...');
+        console.log('LibGen download - using Playwright navigation...');
 
-        // Try smart HTTP scraping first (faster)
-        try {
-          actualDownloadUrl = await smartGetLibgenDownload(downloadUrl);
-          console.log('Smart scraping succeeded:', actualDownloadUrl);
-        } catch (smartError) {
-          console.log('Smart scraping failed, trying Playwright...', smartError);
-
-          // If smart scraping fails and URL needs browser automation
-          if (needsPlaywright(downloadUrl)) {
-            actualDownloadUrl = await playwrightGetDownload(downloadUrl);
-            console.log('Playwright scraping succeeded:', actualDownloadUrl);
-          } else {
-            // Last resort: try Playwright anyway
-            actualDownloadUrl = await playwrightGetDownload(downloadUrl, {
-              timeout: 60000,
-              maxWaitTime: 30000
-            });
-            console.log('Playwright scraping succeeded:', actualDownloadUrl);
-          }
-        }
+        // Skip HTTP request (often returns 500) and go straight to Playwright
+        // This handles the full flow: file.php → mirror click → ads.php → GET link
+        actualDownloadUrl = await playwrightGetDownload(downloadUrl, {
+          timeout: 90000,
+          maxWaitTime: 45000
+        });
+        console.log('Playwright navigation succeeded:', actualDownloadUrl);
 
         // Validate we got a real download URL
         if (!actualDownloadUrl || actualDownloadUrl === downloadUrl) {
