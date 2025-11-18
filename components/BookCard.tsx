@@ -93,12 +93,25 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
     setError(null);
 
     try {
-      // Use the book's direct download URL (no metadata search to avoid wrong book)
-      console.log('[Download] Starting download for:', book.title);
-      const downloadUrl = book.downloadUrl;
-      const fileName = `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`;
-      const fileFormat = book.fileFormat;
-      const source = book.source;
+      // Defensive: Capture book data immediately to prevent closure issues
+      const bookData = {
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        downloadUrl: book.downloadUrl,
+        fileFormat: book.fileFormat,
+        source: book.source,
+      };
+
+      console.log('[Download] Button clicked for book:', bookData.title, 'by', bookData.author);
+      console.log('[Download] Book ID:', bookData.id);
+      console.log('[Download] Source:', bookData.source);
+      console.log('[Download] Download URL:', bookData.downloadUrl);
+
+      const downloadUrl = bookData.downloadUrl;
+      const fileName = `${bookData.title.replace(/[^a-z0-9]/gi, '_')}.${bookData.fileFormat}`;
+      const fileFormat = bookData.fileFormat;
+      const source = bookData.source;
 
       // Download using the book's own URL
       const response = await fetch('/api/download', {
