@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import axios from 'axios';
 import { smartGetLibgenDownload } from '@/lib/scrapers/libgen-browser';
 import { playwrightGetDownload, needsPlaywright } from '@/lib/scrapers/libgen-playwright';
+import { getLibgenDownloadServerless } from '@/lib/scrapers/libgen-serverless';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -37,44 +38,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Handle LibGen with smart scraping
+    // Handle LibGen with serverless scraping
     let actualDownloadUrl = downloadUrl;
 
     if (source === 'libgen') {
       try {
-        console.log('LibGen send-to-kindle - attempting smart scraping...');
+        console.log('LibGen send-to-kindle - using serverless HTTP scraping...');
 
-        // Try smart HTTP scraping first
-        try {
-          actualDownloadUrl = await smartGetLibgenDownload(downloadUrl);
-          console.log('Smart scraping succeeded:', actualDownloadUrl);
-        } catch (smartError) {
-          console.log('Smart scraping failed, trying Playwright...');
+        // Use serverless-friendly HTTP-only scraping (works on Vercel!)
+        actualDownloadUrl = await getLibgenDownloadServerless(downloadUrl);
+        console.log('Serverless scraping succeeded:', actualDownloadUrl);
 
-          // Try Playwright if smart scraping fails
-          actualDownloadUrl = await playwrightGetDownload(downloadUrl, {
-            timeout: 60000,
-            maxWaitTime: 30000
-          });
-          console.log('Playwright scraping succeeded:', actualDownloadUrl);
-        }
-
+        // Validate we got a real download URL
         if (!actualDownloadUrl || actualDownloadUrl === downloadUrl) {
           throw new Error('Could not resolve LibGen download link');
         }
       } catch (error) {
-        console.error('All LibGen scraping methods failed:', error);
+        console.error('LibGen serverless scraping failed:', error);
 
-        return NextResponse.json(
-          {
-            error: 'LibGen books cannot be sent directly to Kindle',
-            message: 'Could not automatically resolve download link. Please download manually from LibGen and email to your Kindle.',
-            libgenUrl: downloadUrl,
-            kindleEmail: kindleEmail,
-            details: error instanceof Error ? error.message : 'Unknown error'
-          },
-          { status: 400 }
-        );
+        // Try Playwright as fallback (for local dev)
+        try {
+          console.log('Falling back to Playwright (local dev only)...');
+          actualDownloadUrl = await playwrightGetDownload(downloadUrl, {
+            timeout: 60000,
+            maxWaitTime: 30000
+          });
+          console.log('Playwright fallback succeeded:', actualDownloadUrl);
+        } catch (playwrightError) {
+          console.error('Playwright fallback also failed:', playwrightError);
+
+          // Fall back to manual download message
+          return NextResponse.json(
+            {
+              error: 'LibGen books cannot be sent directly to Kindle',
+              message: 'Could not automatically resolve download link. Please download manually from LibGen and email to your Kindle.',
+              libgenUrl: downloadUrl,
+              kindleEmail: kindleEmail,
+              details: error instanceof Error ? error.message : 'Unknown error'
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 
