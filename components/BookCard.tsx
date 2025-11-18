@@ -93,38 +93,14 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
     setError(null);
 
     try {
-      // Step 1: Find best download URL using metadata search
-      console.log('[Download] Starting metadata search for:', book.title);
-      let downloadUrl = book.downloadUrl;
-      let fileName = `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`;
-      let fileFormat = book.fileFormat;
-      let source = book.source;
+      // Use the book's direct download URL (no metadata search to avoid wrong book)
+      console.log('[Download] Starting download for:', book.title);
+      const downloadUrl = book.downloadUrl;
+      const fileName = `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`;
+      const fileFormat = book.fileFormat;
+      const source = book.source;
 
-      try {
-        const metadataResponse = await fetch('/api/find-best-download', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(book),
-        });
-
-        if (metadataResponse.ok) {
-          const metadataData = await metadataResponse.json();
-          if (metadataData.success && metadataData.book) {
-            console.log('[Download] Found better match using metadata search:', metadataData.metadata);
-            downloadUrl = metadataData.book.downloadUrl;
-            fileName = `${metadataData.book.title.replace(/[^a-z0-9]/gi, '_')}.${metadataData.book.fileFormat}`;
-            fileFormat = metadataData.book.fileFormat;
-            source = metadataData.book.source; // Use source from metadata search for correct automation
-          }
-        }
-      } catch (metadataError) {
-        console.warn('[Download] Metadata search failed, using original URL:', metadataError);
-        // Continue with original download URL
-      }
-
-      // Step 2: Download using the best URL found
+      // Download using the book's own URL
       const response = await fetch('/api/download', {
         method: 'POST',
         headers: {
