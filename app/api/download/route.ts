@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { smartGetLibgenDownload } from '@/lib/scrapers/libgen-browser';
 import { playwrightGetDownload, needsPlaywright } from '@/lib/scrapers/libgen-playwright';
+import { getLibgenDownloadServerless } from '@/lib/scrapers/libgen-serverless';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,33 +37,41 @@ export async function POST(request: NextRequest) {
 
     if (source === 'libgen') {
       try {
-        console.log('LibGen download - using Playwright navigation...');
+        console.log('LibGen download - using serverless HTTP scraping...');
 
-        // Skip HTTP request (often returns 500) and go straight to Playwright
-        // This handles the full flow: file.php → mirror click → ads.php → GET link
-        actualDownloadUrl = await playwrightGetDownload(downloadUrl, {
-          timeout: 90000,
-          maxWaitTime: 45000
-        });
-        console.log('Playwright navigation succeeded:', actualDownloadUrl);
+        // Use serverless-friendly HTTP-only scraping (works on Vercel!)
+        actualDownloadUrl = await getLibgenDownloadServerless(downloadUrl);
+        console.log('Serverless scraping succeeded:', actualDownloadUrl);
 
         // Validate we got a real download URL
         if (!actualDownloadUrl || actualDownloadUrl === downloadUrl) {
           throw new Error('Could not resolve LibGen download link');
         }
       } catch (error) {
-        console.error('All LibGen scraping methods failed:', error);
+        console.error('LibGen serverless scraping failed:', error);
 
-        // Fall back to manual download message
-        return NextResponse.json(
-          {
-            error: 'LibGen downloads require manual access',
-            message: 'Could not automatically resolve download link. LibGen requires Tor or manual download from their site.',
-            libgenUrl: downloadUrl,
-            details: error instanceof Error ? error.message : 'Unknown error'
-          },
-          { status: 400 }
-        );
+        // Try Playwright as fallback (for local dev)
+        try {
+          console.log('Falling back to Playwright (local dev only)...');
+          actualDownloadUrl = await playwrightGetDownload(downloadUrl, {
+            timeout: 90000,
+            maxWaitTime: 45000
+          });
+          console.log('Playwright fallback succeeded:', actualDownloadUrl);
+        } catch (playwrightError) {
+          console.error('Playwright fallback also failed:', playwrightError);
+
+          // Fall back to manual download message
+          return NextResponse.json(
+            {
+              error: 'LibGen downloads require manual access',
+              message: 'Could not automatically resolve download link. Try downloading directly from LibGen.',
+              libgenUrl: downloadUrl,
+              details: error instanceof Error ? error.message : 'Unknown error'
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 
