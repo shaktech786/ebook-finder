@@ -122,6 +122,13 @@ async function handleLibgenFlow(page: any, currentUrl: string, popups: any[]): P
     console.log('[LibGen] On file.php, searching for mirror link...');
 
     // DEBUG: Log all links on the page to understand what we're working with
+    type DebugLink = {
+      text: string | undefined;
+      href: string;
+      hasAdsPhp: boolean;
+      hasGetPhp: boolean;
+    };
+
     const debugLinks = await page.$$eval('a', (links: HTMLAnchorElement[]) =>
       links.map(link => ({
         text: link.textContent?.trim().substring(0, 50),
@@ -131,11 +138,11 @@ async function handleLibgenFlow(page: any, currentUrl: string, popups: any[]): P
       }))
     );
     console.log('[LibGen DEBUG] Found', debugLinks.length, 'total links on page');
-    console.log('[LibGen DEBUG] Links with ads.php:', debugLinks.filter(l => l.hasAdsPhp).length);
-    console.log('[LibGen DEBUG] Links with get.php:', debugLinks.filter(l => l.hasGetPhp).length);
+    console.log('[LibGen DEBUG] Links with ads.php:', debugLinks.filter((l: DebugLink) => l.hasAdsPhp).length);
+    console.log('[LibGen DEBUG] Links with get.php:', debugLinks.filter((l: DebugLink) => l.hasGetPhp).length);
 
     // Log first few ads.php links
-    const adsLinks = debugLinks.filter(l => l.hasAdsPhp).slice(0, 3);
+    const adsLinks = debugLinks.filter((l: DebugLink) => l.hasAdsPhp).slice(0, 3);
     if (adsLinks.length > 0) {
       console.log('[LibGen DEBUG] Sample ads.php links:', JSON.stringify(adsLinks, null, 2));
     }
@@ -280,7 +287,7 @@ async function handleLibgenFlow(page: any, currentUrl: string, popups: any[]): P
             const navigationPromise = page.waitForNavigation({
               waitUntil: 'domcontentloaded',
               timeout: 15000
-            }).catch((e) => {
+            }).catch((e: Error) => {
               console.log('[LibGen] Navigation wait error (might be ok):', e.message);
               return null;
             });
@@ -288,7 +295,7 @@ async function handleLibgenFlow(page: any, currentUrl: string, popups: any[]): P
             // Click the link (this triggers JavaScript)
             await link.click({
               delay: 50 + Math.random() * 100 // Human-like click delay
-            }).catch((e) => {
+            }).catch((e: Error) => {
               console.log('[LibGen] Click error:', e.message);
             });
 
@@ -614,7 +621,7 @@ async function findDownloadLink(page: any, maxWaitTime: number, startUrl: string
 
         // Navigate to redirect and try again
         await page.goto(redirectUrl, { waitUntil: 'networkidle', timeout: 10000 });
-        return await findDownloadLink(page, maxWaitTime, redirectUrl);
+        return await findDownloadLink(page, maxWaitTime, redirectUrl, popups);
       }
     }
 

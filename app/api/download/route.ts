@@ -100,7 +100,8 @@ export async function POST(request: NextRequest) {
     console.log(`Download successful: ${safeFileName} (${fileData.byteLength} bytes)`);
 
     // Return the file with download headers
-    return new NextResponse(fileData, {
+    // Convert Buffer to Uint8Array for NextResponse compatibility
+    return new NextResponse(new Uint8Array(fileData), {
       status: 200,
       headers: {
         'Content-Type': contentType,
