@@ -27,14 +27,42 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
     setError(null);
 
     try {
+      // Step 1: Find best download URL using metadata search
+      console.log('[Send to Kindle] Starting metadata search for:', book.title);
+      let downloadUrl = book.downloadUrl;
+      let bookTitle = book.title;
+
+      try {
+        const metadataResponse = await fetch('/api/find-best-download', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(book),
+        });
+
+        if (metadataResponse.ok) {
+          const metadataData = await metadataResponse.json();
+          if (metadataData.success && metadataData.book) {
+            console.log('[Send to Kindle] Found better match using metadata search:', metadataData.metadata);
+            downloadUrl = metadataData.book.downloadUrl;
+            bookTitle = metadataData.book.title;
+          }
+        }
+      } catch (metadataError) {
+        console.warn('[Send to Kindle] Metadata search failed, using original URL:', metadataError);
+        // Continue with original download URL
+      }
+
+      // Step 2: Send using the best URL found
       const response = await fetch('/api/send-to-kindle', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          bookTitle: book.title,
-          downloadUrl: book.downloadUrl,
+          bookTitle,
+          downloadUrl,
           kindleEmail,
           fileFormat: book.fileFormat,
           source: book.source,
@@ -61,26 +89,82 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
     setError(null);
 
     try {
-      // Use API route to proxy download with proper headers
+      // Step 1: Find best download URL using metadata search
+      console.log('[Download] Starting metadata search for:', book.title);
+      let downloadUrl = book.downloadUrl;
+      let fileName = `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`;
+
+      try {
+        const metadataResponse = await fetch('/api/find-best-download', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(book),
+        });
+
+        if (metadataResponse.ok) {
+          const metadataData = await metadataResponse.json();
+          if (metadataData.success && metadataData.book) {
+            console.log('[Download] Found better match using metadata search:', metadataData.metadata);
+            downloadUrl = metadataData.book.downloadUrl;
+            fileName = `${metadataData.book.title.replace(/[^a-z0-9]/gi, '_')}.${metadataData.book.fileFormat}`;
+          }
+        }
+      } catch (metadataError) {
+        console.warn('[Download] Metadata search failed, using original URL:', metadataError);
+        // Continue with original download URL
+      }
+
+      // Step 2: Download using the best URL found
       const response = await fetch('/api/download', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          downloadUrl: book.downloadUrl,
-          fileName: `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`,
+          downloadUrl,
+          fileName,
           fileFormat: book.fileFormat,
           source: book.source,
         }),
       });
 
-      if (!response.ok) {
+      // Check if API returned a redirect response (for trusted sources)
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to download');
+
+        // Handle redirect to trusted source (Archive.org, etc.)
+        if (data.redirect && data.downloadUrl) {
+          console.log('[Download] Redirecting to trusted source:', data.downloadUrl);
+          const downloadLink = document.createElement('a');
+          downloadLink.href = data.downloadUrl;
+          downloadLink.download = data.fileName || fileName;
+          downloadLink.target = '_blank'; // Open in new tab to avoid navigation
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+          setDownloading(false);
+          return;
+        }
+
+        // Handle error with downloadUrl fallback
+        if (data.downloadUrl) {
+          console.log('Opening download link in new tab:', data.downloadUrl);
+          window.open(data.downloadUrl, '_blank');
+          setError('Auto-download failed. Opening download link in new tab...');
+          setTimeout(() => setError(null), 3000);
+          setDownloading(false);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to download');
+        }
       }
 
-      // Get the file blob
+      // Get the file blob (for proxied downloads)
       const blob = await response.blob();
 
       // Create download link

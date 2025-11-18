@@ -40,11 +40,12 @@ export default function Home() {
     setBooks([]);
 
     try {
-      // Try multiple sources in parallel, with fallback and timeouts
+      // Prioritize LibGen for popular books (Harry Potter, modern fiction, etc.)
+      // Search all sources in parallel, with fallback and timeouts
       const sources = [
+        { name: 'libgen', url: `/api/search/libgen?q=${encodeURIComponent(query)}`, timeout: 20000 }, // LibGen first - best for popular books
         { name: 'openlibrary', url: `/api/search/openlibrary?q=${encodeURIComponent(query)}`, timeout: 12000 },
-        { name: 'gutenberg', url: `/api/search/gutenberg?q=${encodeURIComponent(query)}`, timeout: 10000 },
-        { name: 'libgen', url: `/api/search/libgen?q=${encodeURIComponent(query)}`, timeout: 15000 },
+        { name: 'gutenberg', url: `/api/search/gutenberg?q=${encodeURIComponent(query)}`, timeout: 10000 }, // Public domain classics
       ];
 
       // Search all sources in parallel with individual timeouts

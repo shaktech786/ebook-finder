@@ -78,6 +78,11 @@ export function calculateRelevanceScore(book: Book, query: string): number {
 
   let score = 0;
 
+  // Source priority bonus - LibGen is best for popular/modern books
+  if (book.source === 'libgen') {
+    score += 20; // Prioritize LibGen results
+  }
+
   // Exact title match
   if (normalizedTitle === normalizedQuery) {
     score += 100;

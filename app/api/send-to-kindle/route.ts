@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import axios from 'axios';
-import { getLibgenDownloadLink } from '@/lib/scrapers/libgen';
+import { smartGetLibgenDownload } from '@/lib/scrapers/libgen-browser';
+import { playwrightGetDownload, needsPlaywright } from '@/lib/scrapers/libgen-playwright';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 300; // 5 minutes for Playwright operations
 
 interface SendToKindleRequest {
   bookTitle: string;
@@ -35,13 +37,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get actual download link for Library Genesis
+    // Handle LibGen with smart scraping
     let actualDownloadUrl = downloadUrl;
-    if (source === 'libgen' && !downloadUrl.includes('library.lol') && !downloadUrl.includes('cloudflare')) {
+
+    if (source === 'libgen') {
       try {
-        actualDownloadUrl = await getLibgenDownloadLink(downloadUrl);
+        console.log('LibGen send-to-kindle - attempting smart scraping...');
+
+        // Try smart HTTP scraping first
+        try {
+          actualDownloadUrl = await smartGetLibgenDownload(downloadUrl);
+          console.log('Smart scraping succeeded:', actualDownloadUrl);
+        } catch (smartError) {
+          console.log('Smart scraping failed, trying Playwright...');
+
+          // Try Playwright if smart scraping fails
+          actualDownloadUrl = await playwrightGetDownload(downloadUrl, {
+            timeout: 60000,
+            maxWaitTime: 30000
+          });
+          console.log('Playwright scraping succeeded:', actualDownloadUrl);
+        }
+
+        if (!actualDownloadUrl || actualDownloadUrl === downloadUrl) {
+          throw new Error('Could not resolve LibGen download link');
+        }
       } catch (error) {
-        console.error('Failed to get direct download link:', error);
+        console.error('All LibGen scraping methods failed:', error);
+
+        return NextResponse.json(
+          {
+            error: 'LibGen books cannot be sent directly to Kindle',
+            message: 'Could not automatically resolve download link. Please download manually from LibGen and email to your Kindle.',
+            libgenUrl: downloadUrl,
+            kindleEmail: kindleEmail,
+            details: error instanceof Error ? error.message : 'Unknown error'
+          },
+          { status: 400 }
+        );
       }
     }
 
