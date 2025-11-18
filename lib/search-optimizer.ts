@@ -177,7 +177,25 @@ export function deduplicateAndMergeBooks(books: Book[], query: string): Book[] {
   // Sort by relevance score (descending)
   results.sort((a, b) => b.score - a.score);
 
-  return results.map(r => r.book);
+  // Final safety check: ensure all IDs are unique by adding index suffix if needed
+  const seenIds = new Set<string>();
+  const finalResults = results.map((r, index) => {
+    let uniqueId = r.book.id;
+
+    // If ID already exists, append index to make it unique
+    if (seenIds.has(uniqueId)) {
+      uniqueId = `${uniqueId}-${index}`;
+    }
+
+    seenIds.add(uniqueId);
+
+    return {
+      ...r.book,
+      id: uniqueId,
+    };
+  });
+
+  return finalResults;
 }
 
 /**
