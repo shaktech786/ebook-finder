@@ -149,7 +149,7 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
           const downloadLink = document.createElement('a');
           downloadLink.href = data.downloadUrl;
           downloadLink.download = data.fileName || fileName;
-          downloadLink.target = '_blank'; // Open in new tab to avoid navigation
+          // Note: No target='_blank' to avoid popup blockers - triggers direct download
           document.body.appendChild(downloadLink);
           downloadLink.click();
           document.body.removeChild(downloadLink);
