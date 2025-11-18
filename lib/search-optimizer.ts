@@ -106,11 +106,10 @@ export function calculateRelevanceScore(book: Book, query: string): number {
 
   let score = 0;
 
-  // English title bonus - heavily prioritize English titles
+  // English title bonus - slight preference for English titles
+  // (but don't penalize foreign titles since they might be English content)
   if (isLikelyEnglishTitle(book.title)) {
-    score += 50; // Major bonus for English titles
-  } else {
-    score -= 100; // Heavy penalty for non-English titles
+    score += 15; // Small bonus for English titles
   }
 
   // Source priority bonus - LibGen is best for popular/modern books
