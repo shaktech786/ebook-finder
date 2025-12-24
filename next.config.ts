@@ -5,48 +5,63 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'covers.openlibrary.org',
-        pathname: '/b/**',
+        hostname: '**.openlibrary.org',
       },
       {
         protocol: 'https',
-        hostname: 'www.gutenberg.org',
-        pathname: '/cache/**',
+        hostname: '**.gutenberg.org',
       },
       {
         protocol: 'http',
         hostname: 'libgen.is',
-        pathname: '/covers/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'libgen.is',
       },
       {
         protocol: 'http',
         hostname: 'libgen.rs',
-        pathname: '/covers/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'libgen.rs',
       },
       {
         protocol: 'http',
         hostname: 'libgen.st',
-        pathname: '/covers/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'libgen.st',
       },
       {
         protocol: 'https',
         hostname: 'libgen.ac',
-        pathname: '/covers/**',
       },
       {
         protocol: 'https',
         hostname: 'libgen.li',
-        pathname: '/covers/**',
       },
       {
         protocol: 'https',
         hostname: 'libgen.gs',
-        pathname: '/covers/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'library.lol',
       },
       {
         protocol: 'https',
-        hostname: 'archive.org',
-        pathname: '/services/**',
+        hostname: 'library.lol',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.archive.org',
+      },
+      {
+        protocol: 'http',
+        hostname: '**.archive.org',
       },
     ],
   },

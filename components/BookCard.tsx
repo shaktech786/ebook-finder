@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Book } from '@/lib/types';
 import { PaperAirplaneIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/solid';
 import Image from 'next/image';
+import { createReadableFilename } from '@/lib/utils/filename';
 
 interface BookCardProps {
   book: Book;
@@ -66,6 +67,7 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
         },
         body: JSON.stringify({
           bookTitle,
+          bookAuthor: book.author,
           downloadUrl,
           kindleEmail,
           fileFormat,
@@ -109,7 +111,7 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
       console.log('[Download] Download URL:', bookData.downloadUrl);
 
       const downloadUrl = bookData.downloadUrl;
-      const fileName = `${bookData.title.replace(/[^a-z0-9]/gi, '_')}.${bookData.fileFormat}`;
+      const fileName = createReadableFilename(bookData.title, bookData.author, bookData.fileFormat);
       const fileFormat = bookData.fileFormat;
       const source = bookData.source;
 
@@ -168,7 +170,7 @@ export default function BookCard({ book, kindleEmail, onSetKindleEmail }: BookCa
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${book.title.replace(/[^a-z0-9]/gi, '_')}.${book.fileFormat}`;
+      link.download = createReadableFilename(book.title, book.author, book.fileFormat);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

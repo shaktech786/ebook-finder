@@ -144,6 +144,11 @@ function parseLibgenResults(html: string, mirror: string): Book[] {
         return; // Skip books without download URLs
       }
 
+      // Build cover URL using our API that tries multiple sources
+      const coverUrl = title && author
+        ? `/api/cover?title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}${md5 ? `&md5=${md5}` : ''}`
+        : undefined;
+
       const book: Book = {
         id: `libgen-${id}-${md5}`,
         title: title || 'Unknown Title',
@@ -155,7 +160,7 @@ function parseLibgenResults(html: string, mirror: string): Book[] {
         fileFormat: normalizeFormat(fileFormat),
         fileSize,
         fileSizeBytes: parseSizeToBytes(fileSize),
-        coverUrl: md5 ? `https://libgen.is/covers/${md5.substring(0, 3)}000000/${md5}.jpg` : undefined,
+        coverUrl,
         downloadUrl,
         source: 'libgen',
         md5, // Store MD5 for later use

@@ -37,13 +37,8 @@ export async function POST(request: NextRequest) {
           throw new Error('Could not resolve LibGen download link');
         }
 
-        // Redirect LibGen downloads directly to avoid file corruption
-        console.log('[Download] Redirecting to LibGen direct link');
-        return NextResponse.json({
-          redirect: true,
-          downloadUrl: actualDownloadUrl,
-          fileName: fileName,
-        });
+        // Don't redirect - proxy through our server to control filename
+        console.log('[Download] Proxying LibGen download with custom filename:', fileName);
       } catch (error) {
         console.error('LibGen serverless scraping failed:', error);
 
@@ -56,14 +51,7 @@ export async function POST(request: NextRequest) {
           });
           console.log('Playwright fallback succeeded:', actualDownloadUrl);
 
-          // Redirect Playwright result too
-          if (actualDownloadUrl.startsWith('http')) {
-            return NextResponse.json({
-              redirect: true,
-              downloadUrl: actualDownloadUrl,
-              fileName: fileName,
-            });
-          }
+          // Don't redirect - let it fall through to proxy logic for custom filename
         } catch (playwrightError) {
           console.error('Playwright fallback also failed:', playwrightError);
 

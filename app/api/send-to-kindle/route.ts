@@ -4,6 +4,7 @@ import axios from 'axios';
 import { smartGetLibgenDownload } from '@/lib/scrapers/libgen-browser';
 import { playwrightGetDownload, needsPlaywright } from '@/lib/scrapers/libgen-playwright';
 import { getLibgenDownloadServerless } from '@/lib/scrapers/libgen-serverless';
+import { createReadableFilename } from '@/lib/utils/filename';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -11,6 +12,7 @@ export const maxDuration = 300; // 5 minutes for Playwright operations
 
 interface SendToKindleRequest {
   bookTitle: string;
+  bookAuthor: string;
   downloadUrl: string;
   kindleEmail: string;
   fileFormat: string;
@@ -20,12 +22,12 @@ interface SendToKindleRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: SendToKindleRequest = await request.json();
-    const { bookTitle, downloadUrl, kindleEmail, fileFormat, source } = body;
+    const { bookTitle, bookAuthor, downloadUrl, kindleEmail, fileFormat, source } = body;
 
     // Validate required fields
-    if (!bookTitle || !downloadUrl || !kindleEmail) {
+    if (!bookTitle || !bookAuthor || !downloadUrl || !kindleEmail) {
       return NextResponse.json(
-        { error: 'Missing required fields: bookTitle, downloadUrl, kindleEmail' },
+        { error: 'Missing required fields: bookTitle, bookAuthor, downloadUrl, kindleEmail' },
         { status: 400 }
       );
     }
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
     });
 
     const fileBuffer = Buffer.from(fileResponse.data);
-    const fileName = sanitizeFilename(bookTitle, fileFormat);
+    const fileName = createReadableFilename(bookTitle, bookAuthor, fileFormat);
 
     // Configure email transporter
     const transporter = nodemailer.createTransport({
@@ -157,18 +159,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Sanitizes filename for email attachment
- */
-function sanitizeFilename(title: string, format: string): string {
-  // Remove or replace invalid filename characters
-  const sanitized = title
-    .replace(/[<>:"/\\|?*]/g, '')
-    .replace(/\s+/g, '_')
-    .substring(0, 100); // Limit length
-
-  const extension = format.toLowerCase();
-  return `${sanitized}.${extension}`;
 }

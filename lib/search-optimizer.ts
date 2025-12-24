@@ -192,10 +192,17 @@ export function deduplicateAndMergeBooks(books: Book[], query: string): Book[] {
         publisher: book.publisher || existing.publisher,
         // Prefer book with pages
         pages: book.pages || existing.pages,
-        // Keep better format (EPUB > MOBI > PDF)
-        ...(getFormatPriority(book.fileFormat) > getFormatPriority(existing.fileFormat)
-          ? { fileFormat: book.fileFormat, downloadUrl: book.downloadUrl, fileSize: book.fileSize, fileSizeBytes: book.fileSizeBytes }
-          : {}),
+        // Prefer LibGen source, then better format (EPUB > MOBI > PDF)
+        // This ensures LibGen downloads are prioritized even if format is equal
+        ...(() => {
+          const shouldUseNewBook =
+            book.source === 'libgen' && existing.source !== 'libgen' || // Always prefer LibGen
+            (book.source === existing.source && getFormatPriority(book.fileFormat) > getFormatPriority(existing.fileFormat)); // Same source, better format
+
+          return shouldUseNewBook
+            ? { fileFormat: book.fileFormat, downloadUrl: book.downloadUrl, fileSize: book.fileSize, fileSizeBytes: book.fileSizeBytes, source: book.source }
+            : {};
+        })(),
       };
 
       bookMap.set(key, merged);

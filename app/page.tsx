@@ -42,55 +42,27 @@ export default function Home() {
     setBooks([]);
 
     try {
-      // Prioritize LibGen for popular books (Harry Potter, modern fiction, etc.)
-      // Search all sources in parallel, with fallback and timeouts
-      const sources = [
-        { name: 'libgen', url: `/api/search/libgen?q=${encodeURIComponent(query)}`, timeout: 20000 }, // LibGen first - best for popular books
-        { name: 'openlibrary', url: `/api/search/openlibrary?q=${encodeURIComponent(query)}`, timeout: 12000 },
-        { name: 'gutenberg', url: `/api/search/gutenberg?q=${encodeURIComponent(query)}`, timeout: 10000 }, // Public domain classics
-      ];
-
-      // Search all sources in parallel with individual timeouts
-      const results = await Promise.allSettled(
-        sources.map(async (source) => {
-          return fetchWithTimeout(
-            fetch(source.url).then(async (response) => {
-              const data: SearchResult = await response.json();
-
-              if (!response.ok) {
-                throw new Error(data.error || `${source.name} search failed`);
-              }
-
-              return data.books;
-            }),
-            source.timeout
-          );
-        })
+      // LibGen ONLY - the best source for all books
+      const response = await fetchWithTimeout(
+        fetch(`/api/search/libgen?q=${encodeURIComponent(query)}`),
+        20000
       );
 
-      // Combine results from successful searches
-      const allBooks: Book[] = [];
-      let successCount = 0;
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          allBooks.push(...result.value);
-          successCount++;
-        } else {
-          console.warn(`${sources[index].name} search failed:`, result.reason);
-        }
-      });
+      const data: SearchResult = await response.json();
 
-      // Deduplicate, merge metadata, and rank by relevance
+      if (!response.ok) {
+        throw new Error(data.error || 'LibGen search failed');
+      }
+
+      const allBooks: Book[] = data.books;
+
+      // Deduplicate and rank by relevance
       const optimizedBooks = deduplicateAndMergeBooks(allBooks, query);
 
       setBooks(optimizedBooks);
 
       if (optimizedBooks.length === 0) {
-        if (successCount === 0) {
-          setError('All search sources failed. Please try again.');
-        } else {
-          setError('No books found. Try a different search term.');
-        }
+        setError('No books found. Try a different search term.');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to search for books');
