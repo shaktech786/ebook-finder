@@ -13,7 +13,7 @@
     "@types/nodemailer": "^7.0.3",
     "axios": "^1.13.2",
     "cheerio": "^1.1.2",
-    "next": "16.0.3",
+    "next": "16.0.10",
     "nodemailer": "^7.0.10",
     "playwright": "^1.56.1",
     "react": "19.2.0",
