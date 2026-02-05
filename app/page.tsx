@@ -9,6 +9,15 @@ import DarkModeToggle from '@/components/DarkModeToggle';
 import { Book, SearchResult } from '@/lib/types';
 import { deduplicateAndMergeBooks, fetchWithTimeout } from '@/lib/search-optimizer';
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@');
+  if (!domain) return email;
+  const visibleStart = local.slice(0, 2);
+  const visibleEnd = local.length > 3 ? local.slice(-1) : '';
+  const masked = visibleStart + '***' + visibleEnd;
+  return `${masked}@${domain}`;
+}
+
 export default function Home() {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -89,9 +98,9 @@ export default function Home() {
                 <button
                   onClick={() => setShowEmailModal(true)}
                   className="w-full sm:w-auto bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-6 py-3 rounded-xl text-base sm:text-lg font-semibold transition-colors border-2 border-gray-300 dark:border-gray-600 truncate text-gray-900 dark:text-gray-100"
-                  title={kindleEmail}
+                  title="Click to update Kindle email"
                 >
-                  <span className="hidden sm:inline">Kindle: </span>{kindleEmail}
+                  <span className="hidden sm:inline">Kindle: </span>{maskEmail(kindleEmail)}
                 </button>
               ) : (
                 <button
