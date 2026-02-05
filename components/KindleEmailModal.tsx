@@ -74,7 +74,7 @@ export default function KindleEmailModal({ isOpen, onClose, onSave, currentEmail
           <div className="bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-200 dark:border-yellow-700 rounded-xl p-3 sm:p-4 mt-3 sm:mt-4">
             <p className="font-semibold mb-2 text-sm sm:text-base text-gray-900 dark:text-gray-100">Important:</p>
             <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300">
-              You must add <span className="font-mono bg-white dark:bg-gray-700 px-1.5 sm:px-2 py-1 rounded text-xs sm:text-sm text-gray-900 dark:text-gray-100">Shakeel&apos;s email</span> to
+              You must add Shakeel&apos;s email to
               your approved email list in the same "Personal Document Settings" page.
             </p>
           </div>
