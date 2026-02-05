@@ -58,7 +58,7 @@ GMAIL_APP_PASSWORD=your-16-char-app-password
    - Find it at: Amazon.com → Manage Content & Devices → Preferences
 
 2. **Add Approved Email**
-   - Add `shakeel.bhamani@gmail.com` to approved senders
+   - Add the sender email shown in the app to your approved senders
    - Same location as above, under "Personal Document Settings"
 
 ### Search Examples
